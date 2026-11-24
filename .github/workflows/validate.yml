@@ -1,0 +1,19 @@
+name: Isolated Python validation
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Isolated tests
+        run: |
+          docker pull python@sha256:22eafb370920ad8b429e0aec3fff433e0669968519f5d60469d83729c138b28b
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 64 --memory 256m --cpus 1 --user 65534:65534 --tmpfs /tmp:rw,noexec,nosuid,size=64m --mount "type=bind,source=$GITHUB_WORKSPACE/github_pulse.py,target=/input/github_pulse.py,readonly" --mount "type=bind,source=$GITHUB_WORKSPACE/tests/test_pulse.py,target=/input/test_pulse.py,readonly" -w /tmp python@sha256:22eafb370920ad8b429e0aec3fff433e0669968519f5d60469d83729c138b28b sh -c 'mkdir -p /tmp/project/tests && cp /input/github_pulse.py /tmp/project/ && cp /input/test_pulse.py /tmp/project/tests/ && cd /tmp/project && python -B -m unittest discover -s tests -v && python -B github_pulse.py --help'
